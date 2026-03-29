@@ -15,7 +15,7 @@ Lightweight Chrome extension that prepends a local timestamp to each ChatGPT pro
 Before a prompt is sent, the extension rewrites it to this format:
 
 ```text
-[Current local timestamp: YYYY-MM-DD HH:mm:ss z (IANA_Timezone)]
+[YYYY-MM-DD HH:mm:ss z]
 
 Original prompt text...
 ```

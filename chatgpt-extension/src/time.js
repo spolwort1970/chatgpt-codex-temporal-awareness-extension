@@ -1,5 +1,5 @@
 (function initTimeModule() {
-  const PREFIX = "[Current local timestamp:";
+  const PREFIX = "[";
 
   function pad(value) {
     return String(value).padStart(2, "0");
@@ -21,9 +21,8 @@
     const minutes = pad(date.getMinutes());
     const seconds = pad(date.getSeconds());
     const zoneName = getTimeZoneName(date);
-    const ianaZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
 
-    return `${PREFIX} ${year}-${month}-${day} ${hours}:${minutes}:${seconds} ${zoneName} (${ianaZone})]`;
+    return `${PREFIX}${year}-${month}-${day} ${hours}:${minutes}:${seconds} ${zoneName}]`;
   }
 
   window.ChatGPTTimestampTime = {
