@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Prompt Timestamp",
+  "version": "1.0.0",
+  "description": "Prepends a local timestamp to ChatGPT prompts immediately before submission.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "src/time.js",
+        "src/dom.js",
+        "src/inject.js",
+        "src/content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
