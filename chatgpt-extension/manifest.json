@@ -2,7 +2,14 @@
   "manifest_version": 3,
   "name": "ChatGPT Prompt Timestamp",
   "version": "1.0.0",
-  "description": "Prepends a local timestamp to ChatGPT prompts immediately before submission.",
+  "description": "Prepends a local timestamp and localhost context block to ChatGPT prompts immediately before submission.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:4317/*"
+  ],
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": [
@@ -12,6 +19,8 @@
       "js": [
         "src/time.js",
         "src/dom.js",
+        "src/settings.js",
+        "src/context-client.js",
         "src/inject.js",
         "src/content.js"
       ],

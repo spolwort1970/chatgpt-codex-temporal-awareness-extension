@@ -1,0 +1,10 @@
+{
+  "name": "context-bridge-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Localhost API wrapper for the context-bridge CLI.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

@@ -1,5 +1,6 @@
 (function initInjectModule() {
   const timeApi = window.ChatGPTTimestampTime;
+  const TOP_SCAN_LIMIT = 1024;
 
   function normalizeLineBreaks(text) {
     return text.replace(/\r\n/g, "\n").replace(/\u00a0/g, " ");
@@ -98,11 +99,75 @@
     return true;
   }
 
-  function alreadyTimestamped(text) {
-    return text.startsWith(timeApi.PREFIX);
+  function findTopSection(text) {
+    return text.slice(0, TOP_SCAN_LIMIT);
   }
 
-  function prependTimestamp(composer) {
+  function hasTimestampNearTop(text) {
+    return /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [^\]]+\]/m.test(findTopSection(text));
+  }
+
+  function hasContextBlockNearTop(text) {
+    const top = findTopSection(text);
+    const start = top.indexOf("[CTX]");
+    const end = top.indexOf("[/CTX]");
+    return start !== -1 && end !== -1 && end > start;
+  }
+
+  function extractLeadingTimestamp(text) {
+    const match = text.match(/^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [^\]]+\])/);
+    return match ? match[1] : "";
+  }
+
+  function normalizeExistingTopMatter(originalText, options = {}) {
+    const keepTimestamp = options.keepTimestamp !== false;
+    const contextBlock = typeof options.contextBlock === "string" ? options.contextBlock.trim() : "";
+    const timestampLine = extractLeadingTimestamp(originalText);
+    const ctxStart = originalText.indexOf("[CTX]");
+    const ctxEnd = originalText.indexOf("[/CTX]");
+
+    if (!timestampLine || !contextBlock || ctxStart === -1 || ctxEnd === -1 || ctxEnd <= ctxStart) {
+      return originalText;
+    }
+
+    const bodyStart = ctxEnd + "[/CTX]".length;
+    const bodyText = originalText.slice(bodyStart).replace(/^\s+/, "");
+    const parts = [];
+
+    if (keepTimestamp) {
+      parts.push(timestampLine);
+    }
+
+    parts.push(contextBlock);
+
+    if (bodyText) {
+      parts.push(bodyText);
+    }
+
+    return parts.join("\n\n");
+  }
+
+  function buildPrependedText(originalText, options = {}) {
+    const keepTimestamp = options.keepTimestamp !== false;
+    const contextBlock = typeof options.contextBlock === "string" ? options.contextBlock.trim() : "";
+    const parts = [];
+
+    if (keepTimestamp && !hasTimestampNearTop(originalText)) {
+      parts.push(timeApi.formatTimestamp());
+    }
+
+    if (contextBlock && !hasContextBlockNearTop(originalText)) {
+      parts.push(contextBlock);
+    }
+
+    if (parts.length === 0) {
+      return normalizeExistingTopMatter(originalText, options);
+    }
+
+    return `${parts.join("\n\n")}\n\n${originalText}`;
+  }
+
+  function prependContext(composer, options = {}) {
     if (!composer) {
       return {
         ok: false,
@@ -119,14 +184,14 @@
       };
     }
 
-    if (alreadyTimestamped(originalText)) {
+    const updatedText = buildPrependedText(originalText, options);
+
+    if (updatedText === originalText) {
       return {
         ok: false,
         reason: "already-stamped"
       };
     }
-
-    const updatedText = `${timeApi.formatTimestamp()}\n\n${originalText}`;
     let ok = false;
 
     if (composer instanceof HTMLTextAreaElement) {
@@ -142,6 +207,6 @@
   }
 
   window.ChatGPTTimestampInject = {
-    prependTimestamp
+    prependContext
   };
 })();

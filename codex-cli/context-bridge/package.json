@@ -1,0 +1,12 @@
+{
+  "name": "context-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chat-facing context formatter for MCP-derived local context.",
+  "bin": {
+    "context-bridge": "./bin/context-bridge.js"
+  },
+  "scripts": {
+    "start": "node ./bin/context-bridge.js"
+  }
+}

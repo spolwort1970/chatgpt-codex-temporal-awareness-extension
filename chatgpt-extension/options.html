@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>ChatGPT Timestamp Settings</title>
+    <style>
+      body {
+        font-family: Segoe UI, sans-serif;
+        margin: 24px;
+        max-width: 640px;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      #status {
+        min-height: 1.2em;
+        color: #0a5f2c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ChatGPT Timestamp Settings</h1>
+    <form id="settingsForm">
+      <label class="row">
+        <input id="autoInjectContext" type="checkbox">
+        <span>Auto-inject localhost context</span>
+      </label>
+
+      <label class="row">
+        <input id="keepTimestamp" type="checkbox">
+        <span>Keep single-line timestamp</span>
+      </label>
+
+      <label>
+        <span>Context mode</span>
+        <select id="contextMode">
+          <option value="minimal">Minimal</option>
+          <option value="extended">Extended</option>
+        </select>
+      </label>
+
+      <button type="submit">Save</button>
+      <div id="status" aria-live="polite"></div>
+    </form>
+
+    <script src="src/settings.js"></script>
+    <script src="src/options.js"></script>
+  </body>
+  </html>

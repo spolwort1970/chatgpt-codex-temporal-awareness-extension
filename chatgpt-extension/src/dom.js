@@ -55,6 +55,33 @@
     return region.querySelector(EDITOR_SELECTOR);
   }
 
+  function getSubmitButtonFromComposer(composer) {
+    if (!(composer instanceof Element)) {
+      return null;
+    }
+
+    const form = composer.closest("form");
+    const formButton = form instanceof HTMLFormElement ? form.querySelector(SUBMIT_BUTTON_SELECTOR) : null;
+
+    if (formButton instanceof HTMLButtonElement && !formButton.disabled && formButton.getAttribute("aria-disabled") !== "true") {
+      return formButton;
+    }
+
+    const region = composer.closest("main, article, section, div");
+
+    if (!(region instanceof Element)) {
+      return null;
+    }
+
+    const regionButton = region.querySelector(SUBMIT_BUTTON_SELECTOR);
+
+    if (regionButton instanceof HTMLButtonElement && !regionButton.disabled && regionButton.getAttribute("aria-disabled") !== "true") {
+      return regionButton;
+    }
+
+    return null;
+  }
+
   function getActiveComposer() {
     const active = document.activeElement;
     const directMatch = getComposerFromNode(active);
@@ -88,6 +115,7 @@
     getActiveComposer,
     getComposerFromNode,
     getComposerFromButton,
+    getSubmitButtonFromComposer,
     getSubmitButtonFromEventTarget
   };
 })();
