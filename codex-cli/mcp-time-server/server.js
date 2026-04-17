@@ -13,6 +13,11 @@ function getTimezoneAbbreviation(name) {
     return "";
   }
 
+  // Normalize UTC-family long names to the conventional abbreviation.
+  if (/^(coordinated|universal) universal time$/i.test(name)) {
+    return "UTC";
+  }
+
   return name
     .split(/\s+/)
     .filter(Boolean)
