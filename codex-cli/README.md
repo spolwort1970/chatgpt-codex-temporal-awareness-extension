@@ -2,14 +2,14 @@
 
 Windows Codex does not currently support native per-turn lifecycle hooks, so this folder uses a layered best-effort approach.
 
-- preferred: a local MCP server that exposes a first-class `current_time` tool
+- preferred: a local MCP server that exposes first-class temporal tools
 - fallback: a machine-global local time command plus a global Codex instruction
 
 This improves temporal grounding, but it does not create a hard guarantee that Codex will invoke the tool on every turn.
 
 As of v2, the intended global setup is:
 
-- MCP server first for a first-class `current_time` tool
+- MCP server first for first-class temporal tools such as `current_time`
 - `developer_instructions` for the global coding ruleset plus the per-turn time check
 - `instructions` as a second, shorter steering layer for the same time behavior
 - `C:\tools\time-helper\current-time.cmd` as the fallback when MCP is unavailable
@@ -27,7 +27,7 @@ The command prints one line in this shape:
 - `time-helper/current-time.ps1`: PowerShell time command
 - `time-helper/current-time.cmd`: Windows shim for easier invocation
 - `install-time-helper.ps1`: installs the helper to `C:\tools\time-helper` and updates Codex config
-- `mcp-time-server/`: minimal Node-based MCP server that exposes a `current_time` tool
+- `mcp-time-server/`: minimal Node-based MCP server that exposes temporal utilities such as `current_time`
 - `codex-timestamp.ps1`: older initial-prompt wrapper
 - `codex-timestamp.cmd`: older initial-prompt wrapper shim
 
@@ -39,6 +39,9 @@ Codex config snippet:
 [mcp_servers.time_helper]
 command = "node"
 args = ["C:\\Github\\chatgpt-codex-temporal-awareness-extension\\codex-cli\\mcp-time-server\\server.js"]
+
+[mcp_servers.time_helper.tools.current_time]
+approval_mode = "approve"
 ```
 
 Global directive snippet:
@@ -66,8 +69,8 @@ instructions = '''
 What works now:
 
 - Codex starts the server successfully.
-- The server exposes the `current_time` MCP tool.
-- Codex can discover and call that tool.
+- The server exposes temporal MCP tools including `current_time`.
+- Codex can discover and call those tools.
 - The first tool use may prompt for approval. If you trust it, choose `Always allow`.
 - Fresh-session testing on this machine showed the MCP tool being called on ordinary prompts and coding prompts after the global directives were added.
 
@@ -92,7 +95,21 @@ Expected shape:
 ## Install On Another Windows Machine
 
 1. Clone this repo to a stable path, for example `C:\Github\chatgpt-codex-temporal-awareness-extension`.
-2. Add the MCP server to `C:\Users\<you>\.codex\config.toml`:
+2. From the repo root, run:
+
+```powershell
+.\update-this-machine.ps1
+```
+
+What that does:
+
+- pulls the latest repo changes with `git pull --ff-only`
+- installs the fallback helper to `C:\tools\time-helper`
+- creates `C:\Users\<you>\.codex\config.toml` if it does not exist
+- writes the `time_helper` MCP server block
+- writes the global `developer_instructions` and `instructions`
+
+Manual equivalent if you need it:
 
 ```toml
 [mcp_servers.time_helper]
@@ -103,7 +120,7 @@ args = ["C:\\Github\\chatgpt-codex-temporal-awareness-extension\\codex-cli\\mcp-
 approval_mode = "approve"
 ```
 
-3. Run the installer:
+3. If you skipped the repo-root script, run the installer:
 
 ```powershell
 cd C:\Github\chatgpt-codex-temporal-awareness-extension
@@ -117,6 +134,16 @@ Expected result:
 
 - Codex calls `time_helper.current_time`.
 - The reply does not need to echo the timestamp unless asked.
+
+Available tools:
+
+- `current_time`: current local timestamp for this machine
+- `format_time`: format a supplied date/time for a target timezone
+- `convert_timezone`: convert a supplied date/time into another timezone
+- `time_until`: return the remaining time until a supplied date/time
+- `day_of_week`: return the weekday for a supplied date
+- `is_dst`: report whether a timezone is observing daylight saving time
+- `parse_relative_date`: turn expressions like `tomorrow` or `in 3 days` into an absolute timestamp
 
 ## Fallback Path: Local Helper
 
@@ -139,6 +166,7 @@ and updates your global Codex config with:
 
 - `developer_instructions` for the coding ruleset plus per-turn time check
 - `instructions` as a shorter backup steering layer
+- `[mcp_servers.time_helper]` plus `[mcp_servers.time_helper.tools.current_time]`
 - `C:\tools\time-helper\current-time.cmd` installed as the fallback path
 
 ## Recommended Usage

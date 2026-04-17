@@ -1,20 +1,15 @@
+param(
+    [string]$TargetDir = "C:\tools\time-helper",
+    [string]$ConfigPath = (Join-Path $env:USERPROFILE ".codex\config.toml")
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path $PSScriptRoot -Parent
 $sourceDir = Join-Path $PSScriptRoot "time-helper"
-$targetDir = "C:\tools\time-helper"
-$configPath = Join-Path $env:USERPROFILE ".codex\config.toml"
-$mcpServerPath = Join-Path $PSScriptRoot "mcp-time-server\server.js"
-$mcpServerPathEscaped = $mcpServerPath.Replace('\', '\\')
-$mcpServerBlock = @"
-[mcp_servers.time_helper]
-command = "node"
-args = ["$mcpServerPathEscaped"]
-
-[mcp_servers.time_helper.tools.current_time]
-approval_mode = "approve"
-
-"@
+$serverPath = Join-Path $repoRoot "codex-cli\mcp-time-server\server.js"
+$configDir = Split-Path $ConfigPath -Parent
 $instructionsLines = @(
     '- Before responding to each user turn, call the MCP tool `current_time` when it is available.'
     '- Treat the `current_time` tool output as the authoritative local timestamp for the turn.'
@@ -54,36 +49,88 @@ $developerInstructionLines = @(
     '- Accuracy matters more than speed.'
 )
 
+function Remove-FirstTomlMultilineString {
+    param(
+        [string]$Text,
+        [string]$Key
+    )
+
+    [regex]::Replace($Text, "(?ms)^$([regex]::Escape($Key))\s*=\s*'''.*?'''\s*", '', 1)
+}
+
+function Remove-TimeHelperTables {
+    param([string]$Text)
+
+    $patterns = @(
+        '(?ms)^\[mcp_servers\.time_helper\.tools\.current_time\]\s*.*?(?=^\[|\z)',
+        '(?ms)^\[mcp_servers\.time_helper\]\s*.*?(?=^\[|\z)'
+    )
+
+    $updated = $Text
+    foreach ($pattern in $patterns) {
+        $updated = [regex]::Replace($updated, $pattern, '')
+    }
+
+    $updated
+}
+
 if (-not (Test-Path -LiteralPath $sourceDir)) {
     throw "Source helper directory not found: $sourceDir"
 }
 
-if (-not (Test-Path -LiteralPath $mcpServerPath)) {
-    throw "MCP server entrypoint not found: $mcpServerPath"
+if (-not (Test-Path -LiteralPath $serverPath)) {
+    throw "MCP server entrypoint not found: $serverPath"
 }
 
-New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
-Copy-Item -Path (Join-Path $sourceDir "*") -Destination $targetDir -Force
+New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
+Copy-Item -Path (Join-Path $sourceDir "*") -Destination $TargetDir -Force
 
-if (-not (Test-Path -LiteralPath $configPath)) {
-    throw "Codex config not found: $configPath"
+if (-not (Test-Path -LiteralPath $configDir)) {
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
 }
 
-$configText = Get-Content -LiteralPath $configPath -Raw
-$instructionsBody = ($instructionsLines -join [Environment]::NewLine)
-$instructionsBlock = "instructions = '''" + [Environment]::NewLine + $instructionsBody + [Environment]::NewLine + "'''" + [Environment]::NewLine + [Environment]::NewLine
-$developerInstructionBody = ($developerInstructionLines -join [Environment]::NewLine)
-$developerInstructionsBlock = "developer_instructions = '''" + [Environment]::NewLine + $developerInstructionBody + [Environment]::NewLine + "'''" + [Environment]::NewLine + [Environment]::NewLine
-$withoutDeveloperInstructions = [regex]::Replace($configText, "(?ms)^developer_instructions\s*=\s*'''.*?'''\s*", '', 1)
-$withoutInstructions = [regex]::Replace($withoutDeveloperInstructions, "(?ms)^instructions\s*=\s*'''.*?'''\s*", '', 1)
-$withoutMcpToolConfig = [regex]::Replace($withoutInstructions, "(?ms)^\[mcp_servers\.time_helper\.tools\.current_time\]\s*approval_mode\s*=\s*""[^""]*""\s*", '', 1)
-$withoutMcpServerConfig = [regex]::Replace($withoutMcpToolConfig, "(?ms)^\[mcp_servers\.time_helper\]\s*command\s*=\s*""[^""]*""\s*args\s*=\s*\[[^\]]*\]\s*", '', 1)
-$updated = $developerInstructionsBlock + $instructionsBlock + $mcpServerBlock + $withoutMcpServerConfig.TrimStart()
+if (-not (Test-Path -LiteralPath $ConfigPath)) {
+    New-Item -ItemType File -Path $ConfigPath -Force | Out-Null
+}
+
+$configText = Get-Content -LiteralPath $ConfigPath -Raw
+$withoutDeveloperInstructions = Remove-FirstTomlMultilineString -Text $configText -Key "developer_instructions"
+$withoutInstructions = Remove-FirstTomlMultilineString -Text $withoutDeveloperInstructions -Key "instructions"
+$withoutTimeHelper = Remove-TimeHelperTables -Text $withoutInstructions
+$instructionsBody = $instructionsLines -join [Environment]::NewLine
+$developerInstructionBody = $developerInstructionLines -join [Environment]::NewLine
+$escapedServerPath = $serverPath.Replace('\', '\\')
+$developerInstructionsBlock = @'
+developer_instructions = '''
+__BODY__
+'''
+'@.Replace('__BODY__', $developerInstructionBody).Trim()
+$instructionsBlock = @'
+instructions = '''
+__BODY__
+'''
+'@.Replace('__BODY__', $instructionsBody).Trim()
+$mcpBlock = @'
+[mcp_servers.time_helper]
+command = "node"
+args = ["__SERVER_PATH__"]
+
+[mcp_servers.time_helper.tools.current_time]
+approval_mode = "approve"
+'@.Replace('__SERVER_PATH__', $escapedServerPath).Trim()
+$updated = @(
+    $developerInstructionsBlock
+    ''
+    $instructionsBlock
+    ''
+    $mcpBlock
+    ''
+    $withoutTimeHelper.TrimStart()
+) -join [Environment]::NewLine
 
 if ($updated -ne $configText) {
-    Set-Content -LiteralPath $configPath -Value $updated
+    Set-Content -LiteralPath $ConfigPath -Value $updated
 }
 
-Write-Output "Installed time helper to $targetDir"
-Write-Output "Updated Codex config at $configPath"
-Write-Output "Configured MCP server at $mcpServerPath"
+Write-Output "Installed time helper to $TargetDir"
+Write-Output "Updated Codex config at $ConfigPath"

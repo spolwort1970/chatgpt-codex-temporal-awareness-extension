@@ -2,6 +2,24 @@
 
 This repository holds two separate implementations of the same idea: add local temporal context so prompts are grounded in the user's current time.
 
+## Updating Another Machine
+
+When this repo is pulled onto another Windows machine, use the repo-root script:
+
+```powershell
+.\update-this-machine.ps1
+```
+
+That script:
+
+- pulls the latest repo changes with `git pull --ff-only`
+- installs or refreshes the Windows fallback helper
+- creates or updates `C:\Users\<you>\.codex\config.toml`
+- registers the `time_helper` MCP server
+- refreshes the global Codex instructions for temporal awareness
+
+After it finishes, start a brand-new `codex` session.
+
 ## Layout
 
 - `chatgpt-extension/`: Chrome extension for ChatGPT web
